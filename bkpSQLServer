@@ -1,0 +1,82 @@
+###################################
+#  BKP SQLSERVER
+###################################
+
+Import-Module SQLPS -DisableNameChecking
+
+
+$data = Get-Date -Format ddMMyyyy
+
+$dbname = 'GManager_associacao', 'master'
+
+foreach ($nomeDoBanco in $dbname) {
+
+Backup-SqlDatabase -ServerInstance "group-note0002\SQLEXPRESS" -Database $nomeDoBanco -BackupFile "E:\Banco\$($dbname)_FULL_$($dt).bak"
+
+}
+exit
+
+$ServerList = "GROUP-NOTE0002\SQLEXPRESS" 
+$OutputFile = "E:\Banco\Output.htm" 
+ 
+$HTML = '<style type="text/css"> 
+    #Header{font-family:"Trebuchet MS", Arial, Helvetica, sans-serif;width:100%;border-collapse:collapse;} 
+    #Header td, #Header th {font-size:14px;border:1px solid #98bf21;padding:3px 7px 2px 7px;} 
+    #Header th {font-size:14px;text-align:left;padding-top:5px;padding-bottom:4px;background-color:#A7C942;color:#fff;} 
+    #Header tr.alt td {color:#000;background-color:#EAF2D3;} 
+    </Style>' 
+     
+$HTML += "<HTML><BODY><Table border=1 cellpadding=0 cellspacing=0 width=100% id=Header> 
+        <TR> 
+            <TH><B>Nome de Banco</B></TH> 
+            <TH><B>Tipo do Backup</B></TD> 
+            <TH><B>Data do ultimo Backup Full</B></TH> 
+            <TH><B>Data do ultimo backup Diferencial</B></TH> 
+        </TR>" 
+ 
+[System.Reflection.Assembly]::LoadWithPartialName('Microsoft.SqlServer.SMO') | out-null 
+ForEach ($ServerName in $ServerList) 
+{ 
+    $HTML += "<TR bgColor='#ccff66'><TD colspan=5 align=center><B>$ServerName</B></TD></TR>" 
+     
+    $SQLServer = New-Object ('Microsoft.SqlServer.Management.Smo.Server') $ServerName  
+    Foreach($Database in $SQLServer.Databases) 
+    { 
+        $HTML += "<TR> 
+                    <TD>$($Database.Name)</TD> 
+                    <TD>$($Database.RecoveryModel)</TD> 
+                    <TD>$($Database.LastBackupDate)</TD> 
+                    <TD>$($Database.LastDifferentialBackupDate)</TD> 
+                 </TR>" 
+    } 
+} 
+ 
+$HTML += "</Table></BODY></HTML>" 
+$HTML | Out-File $OutputFile
+
+# # # # # 
+# FUNÇÃO PARA ENVIAR EMAIL
+# # # # #
+
+$SMTPServer = "smtp.office365.com"
+$SMTPPort = "587"
+$Username = "eg.zandler@groupsoftware.com.br"
+$Password = "6Roup@@@"
+
+$to = "eg.zandler@groupsoftware.com.br"
+$subject = "Relatorio de execucao de processo"
+$body = get-content ("E:\Banco\Output.htm")
+
+$message = New-Object System.Net.Mail.MailMessage
+$message.subject = $subject
+$message.body = $body
+$message.to.add($to)
+$message.IsBodyHtml = $true
+$message.from = $username
+
+$smtp = New-Object System.Net.Mail.SmtpClient($SMTPServer, $SMTPPort);
+$smtp.EnableSSL = $true
+$smtp.Credentials = New-Object System.Net.NetworkCredential($Username, $Password);
+$smtp.send($message)
+
+stop-process -Id $PID
